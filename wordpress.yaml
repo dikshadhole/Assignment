@@ -1,0 +1,65 @@
+
+--- # Deploy WordPress on EC2
+ -hosts: localhost
+  gather_facts: no
+  vars:
+    region: us-east-1e
+    instance_type: t2.micro
+    security_group: jenkins-server-sg
+    key_pair: north-sg
+    ami: ami-0aa7d40eeae50c9a9
+  tasks:
+  - name: Launch EC2 instance
+    ec2:
+      key_name: "{{ key_pair }}"
+      group: "{{ security_group }}"
+      instance_type: "{{ instance_type }}"
+      image: "{{ ami }}"
+      wait: yes
+      region: "{{ region }}"
+      vpc_subnet_id: subnet-03d8db45f5206b38f
+      assign_public_ip: yes
+    register: ec2
+
+  - name: public dns
+    add_host:
+      hostname: "{{ ec2-54-84-225-24.compute-1.amazonaws.com }}"
+      groupname: ec2_instance
+
+  - name: Install Apache, PHP and dependencies
+    become: yes
+    become_user: root
+    yum:
+      name: 
+        - httpd 
+        - php
+        - php-mysql
+        - php-gd
+        - php-xml
+        - php-mbstring
+      state: latest
+
+  - name: Start Apache Service
+    become: yes
+    become_user: root
+    service: 
+      name: httpd
+      state: started
+      enabled: yes
+
+  - name: Download and extract WordPress
+    become: yes
+    become_user: root
+    unarchive: 
+      src: https://wordpress.org/latest.tar.gz
+      dest: /var/www/html/
+      remote_src: yes
+
+  - name: Configure Apache virtual host
+    become: yes
+    become_user: root
+    template:
+      src: mnt/hostfile
+      dest: /etc/httpd/conf.d/vhost.conf
+   
+	  
